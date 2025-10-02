@@ -20,10 +20,10 @@
 #pragma once
 #include <QStringList>
 
-class FileFinder {
+class FileSearch {
 public:
-  FileFinder() = default;
-  ~FileFinder() = default;
+  FileSearch() = default;
+  ~FileSearch() = default;
 
   // Recursively searches rootDir for files whose *base name* matches headerFileName exactly.
   // Matching is case-insensitive on Windows/macOS by default file systems; we enforce case-insensitive match in code.

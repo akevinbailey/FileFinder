@@ -1,0 +1,27 @@
+#include <winresrc.h>
+
+IDI_ICON1 ICON "FileFinder.ico"
+
+1 VERSIONINFO
+ FILEVERSION 1,0,0,0
+ PRODUCTVERSION 1,0,0,0
+ FILEFLAGSMASK 0x3fL
+ FILEOS 0x40004L
+ FILETYPE 0x1L
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904B0"
+    BEGIN
+      VALUE "CompanyName", "Andrew Kevin Bailey\0"
+      VALUE "FileDescription", "Cpp File Finder\0"
+      VALUE "FileVersion", "1.0.0\0"
+      VALUE "ProductName", "FileFinder\0"
+      VALUE "ProductVersion", "1.0.0\0"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x409, 1200
+  END
+END

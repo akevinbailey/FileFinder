@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 4.0)
-project(HeaderFinder)
+project(FileFinder)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
@@ -28,6 +28,7 @@ add_executable(${PROJECT_NAME} WIN32
         ${APP_QRC}
 )
 
+target_sources(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/resources/appicon.rc)
 target_include_directories(${PROJECT_NAME} PRIVATE ${SRC_DIR})
 target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Widgets)
 

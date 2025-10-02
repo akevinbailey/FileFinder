@@ -17,11 +17,11 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "FileFinder.h"
+#include "FileSearch.h"
 #include <QDirIterator>
 #include <QFileInfo>
 
-QStringList FileFinder::findFiles(const QString& rootDir, const QString& headerFileName) {
+QStringList FileSearch::findFiles(const QString& rootDir, const QString& headerFileName) {
   QStringList results;
   const QString target = headerFileName.trimmed();
 

@@ -24,10 +24,10 @@ int main(int argc, char *argv[]) {
   QApplication app(argc, argv);
 
   QCoreApplication::setOrganizationName("Andrew Kevin Bailey");
-  QCoreApplication::setApplicationName("HeaderFinder");
+  QCoreApplication::setApplicationName("FileFinder");
   QCoreApplication::setApplicationVersion("1.0.0");
-  QGuiApplication::setApplicationDisplayName("Header File Finder");
-  QGuiApplication::setWindowIcon(QIcon(":/HeaderFinder.ico"));
+  QGuiApplication::setApplicationDisplayName("File Finder");
+  QGuiApplication::setWindowIcon(QIcon(":/FileFinder.ico"));
 
   MainWindow w;
   w.show();

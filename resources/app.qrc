@@ -21,7 +21,7 @@
 
 <RCC>
     <qresource prefix="/">
-        <file>HeaderFinder.png</file>
-        <file>HeaderFinder.ico</file>
+        <file>FileFinder.png</file>
+        <file>FileFinder.ico</file>
     </qresource>
 </RCC>

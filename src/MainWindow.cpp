@@ -19,7 +19,7 @@
 
 // ReSharper disable CppDFAMemoryLeak
 #include "MainWindow.h"
-#include "FileFinder.h"
+#include "FileSearch.h"
 
 #include <QWidget>
 #include <QGridLayout>
@@ -48,7 +48,7 @@ void MainWindow::buildUi() {
     layout->setHorizontalSpacing(8);
     layout->setVerticalSpacing(8);
 
-    auto* lblHeader = new QLabel("Header File:", central);
+    auto* lblHeader = new QLabel("File Name:", central);
     leHeaderFile_ = new QLineEdit(central);
     leHeaderFile_->setPlaceholderText("e.g., my-header.h");
 
@@ -146,7 +146,7 @@ void MainWindow::onSearch() {
 
     teFound_->clear();
 
-    const auto matches = FileFinder::findFiles(searchDir, headerName);
+    const auto matches = FileSearch::findFiles(searchDir, headerName);
 
     if (matches.isEmpty()) {
         teFound_->setPlainText("No matches found.");
