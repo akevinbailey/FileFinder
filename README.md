@@ -21,3 +21,6 @@ Built with C++20 and Qt Widgets, the tool is lightweight and responsive. It pers
 * `platforms\qwindows.dll`
 * `styles\qmodernwindowsstyle.dll`
 
+### On Linux:
+Coming soon.
+

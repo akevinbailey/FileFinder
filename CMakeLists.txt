@@ -1,3 +1,4 @@
+# Currently, this make file is only for building the application on Windows 11
 cmake_minimum_required(VERSION 4.0)
 project(FileFinder)
 
