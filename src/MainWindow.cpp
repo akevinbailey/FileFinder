@@ -160,5 +160,10 @@ void MainWindow::onSearch() {
         out.append(path).append('\n');
     }
     teFound_->setPlainText(out);
-    statusLabel_->setText(QString::number(matches.size()) + " match(es)");
+    if (matches.size() > 1) {
+        statusLabel_->setText(QString::number(matches.size()) + " matches");
+    }
+    else {
+        statusLabel_->setText("1 match");
+    }
 }

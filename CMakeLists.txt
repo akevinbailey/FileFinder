@@ -8,8 +8,8 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-set(CMAKE_PREFIX_PATH "C:/Development/Qt/6.9.2/mingw_64")
-set(Qt6_DIR "C:/Development/Qt/6.9.2/mingw_64/lib/cmake/Qt6")
+set(CMAKE_PREFIX_PATH "C:/Development/Qt/6.9.3/mingw_64")
+set(Qt6_DIR "C:/Development/Qt/6.9.3/mingw_64/lib/cmake/Qt6")
 set(SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 # Adjust if your Qt is not in a default location
@@ -35,7 +35,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Widgets)
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E echo "Running windeployqt..."
-        COMMAND "C:/Development/Qt/6.9.2/mingw_64/bin/windeployqt.exe"
+        COMMAND "C:/Development/Qt/6.9.3/mingw_64/bin/windeployqt.exe"
         --no-translations
         --no-compiler-runtime
         "$<TARGET_FILE:${PROJECT_NAME}>"
@@ -48,7 +48,7 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 
 #add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 #        COMMAND ${CMAKE_COMMAND} -E echo "Running windeployqt..."
-#        COMMAND "C:/Development/Qt/6.9.2/mingw_64/bin/windeployqt.exe"
+#        COMMAND "C:/Development/Qt/6.9.3/mingw_64/bin/windeployqt.exe"
 #        --release
 #        "$<TARGET_FILE:${PROJECT_NAME}>"
 #        COMMENT "Deploying Qt runtime with windeployqt"
