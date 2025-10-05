@@ -20,8 +20,8 @@
   -->
 
 <RCC>
-    <qresource prefix="/">
-        <file>FileFinder.png</file>
+    <qresource prefix="/icons">
         <file>FileFinder.ico</file>
+        <file>FileFinder.png</file>
     </qresource>
 </RCC>

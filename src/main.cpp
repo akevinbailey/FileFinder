@@ -27,7 +27,11 @@ int main(int argc, char *argv[]) {
   QCoreApplication::setApplicationName("FileFinder");
   QCoreApplication::setApplicationVersion("1.0.0");
   QGuiApplication::setApplicationDisplayName("File Finder");
-  QGuiApplication::setWindowIcon(QIcon(":/FileFinder.ico"));
+
+  QIcon icon;
+  icon.addFile(":/icons/FileFinder.ico");
+  icon.addFile(":/icons/FileFinder.png");
+  QGuiApplication::setWindowIcon(icon);
 
   MainWindow w;
   w.show();
