@@ -97,8 +97,8 @@ endif()
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         # Set up the plugin directories
         COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>/icons"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/resources/FileFinder.ico" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/icons"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/resources/FileFinder.png" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/icons"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/resources/${PROJECT_NAME}.ico" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/icons"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/resources/${PROJECT_NAME}.png" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/icons"
 )
 
 # Resolve Qt dirs from Qt6_DIR
