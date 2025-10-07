@@ -17,26 +17,40 @@ if (WIN32)
     # Vulkan is not needed on Windows
     set(CMAKE_DISABLE_FIND_PACKAGE_WrapVulkanHeaders ON)
     # Defaults for Windows (Visual Studio)
-    set(CMAKE_PREFIX_PATH "C:/Development/Qt/6.9.3/msvc2022_64")
-    set(Qt6_DIR "C:/Development/Qt/6.9.3/msvc2022_64/lib/cmake/Qt6")
-    set(DEPLOY_QT "C:/Development/Qt/6.9.3/msvc2022_64/bin/windeployqt6.exe")
+    if (NOT DEFINED CMAKE_PREFIX_PATH)
+        set(CMAKE_PREFIX_PATH "C:/Development/Qt/6.10.0/msvc2022_64")
+    endif()
+    if (NOT DEFINED Qt6_DIR)
+        set(Qt6_DIR "C:/Development/Qt/6.10.0/msvc2022_64/lib/cmake/Qt6")
+    endif()
+    if (NOT DEFINED DEPLOY_QT)
+        set(DEPLOY_QT "C:/Development/Qt/6.10.0/msvc2022_64/bin/windeployqt6.exe")
+    endif()
 else() # Linux
-    set(CMAKE_PREFIX_PATH "/home/akbailey/Qt/6.9.3/gcc_64")
-    set(Qt6_DIR "/home/akbailey/Qt/6.9.3/gcc_64/lib/cmake/Qt6")
-    set(DEPLOY_QT "") # not used on Linux
+    # To build on Linux, use the Qt6 provided by the distro:
+    # Ubuntu / Debian (amd64, arm64, etc.):
+    #   sudo apt-get install -y build-essential cmake ninja-build qt6-base-dev qt6-base-dev-tools
+    #   sudo apt-get install -y libqt6widgets6
+    #   sudo apt-get install -y xwayland libxcb1 libxcb-render0 libxcb-shape0 libxcb-xfixes0 libx11-6 libxext6 libxrender1 fontconfig libxkbcommon-x11-0 libxcb-cursor0
+    # Fedora / RHEL / Rocky / Alma (x86_64, aarch64):
+    #   sudo dnf install -y cmake ninja-build @development-tools qt6-qtbase-devel
+    #   sudo dnf install -y qt6-qtbase-gui xorg-x11-server-Xwayland libxkbcommon-x11 libX11 libXext libXrender xcb-util-cursor
+    # openSUSE
+    #   sudo zypper install -y cmake ninja gcc-c++ libqt6-qtbase-devel
+    #   sudo zypper install -y libqt6-qtbase-platformtheme libqt6-qtbase-gui xwayland xcb-util-cursor
+    if (NOT DEFINED Qt6_DIR)
+        set(CMAKE_PREFIX_PATH "/usr/lib/x86_64-linux-gnu/cmake/Qt6")
+    endif()
+    if (NOT DEFINED DEPLOY_QT)
+        set(DEPLOY_QT "") # not used on Linux
+    endif()
 
-    # Use the INSTALL_RPATH for the build too (prevents CMake from appending SDK lib dirs)
-    set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
     # Force the rpath you want, and don't append link directories
     set(CMAKE_INSTALL_RPATH "$ORIGIN")
-    set(CMAKE_INSTALL_RPATH_USE_LINK_PATH OFF)
-    # Do not skip rpaths
-    set(CMAKE_SKIP_BUILD_RPATH   OFF)
-    set(CMAKE_SKIP_INSTALL_RPATH OFF)
 endif()
 
 # Find Qt
-find_package(Qt6 6.9.3 REQUIRED COMPONENTS Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Widgets)
 
 # Source layout
 set(SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
@@ -115,7 +129,7 @@ if (WIN32)
     )
 
     # We must execute an external cmake script to get the extra debug files due to the way cmake handles multi-config generators
-    set(WINDEPLOYQT "C:/Development/Qt/6.9.3/msvc2022_64/bin/windeployqt6.exe")
+    set(WINDEPLOYQT "C:/Development/Qt/6.10.0/msvc2022_64/bin/windeployqt.exe")
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
             COMMAND ${CMAKE_COMMAND}
             -DWINDEPLOYQT:FILEPATH=${WINDEPLOYQT}
@@ -124,71 +138,5 @@ if (WIN32)
             -P "${CMAKE_CURRENT_LIST_DIR}/cmake/run_windeployqt_debug.cmake"
             VERBATIM
             COMMENT "windeployqt (Debug only)"
-    )
-endif()
-
-# For the Linux application to work, the files must be in certain locations.  The ./bin directory has application and
-# platform plugin libraries and the ./lib has all the Qt libraries.  The ./bin and ./lib must be at the same directory
-# level for the application to work.
-if (UNIX AND NOT APPLE)
-    set_target_properties(${PROJECT_NAME} PROPERTIES
-            RUNTIME_OUTPUT_DIRECTORY_DEBUG          "${CMAKE_BINARY_DIR}/Debug/bin"
-            RUNTIME_OUTPUT_DIRECTORY_RELEASE        "${CMAKE_BINARY_DIR}/Release/bin"
-
-            LIBRARY_OUTPUT_DIRECTORY_DEBUG          "${CMAKE_BINARY_DIR}/Debug/lib"
-            LIBRARY_OUTPUT_DIRECTORY_RELEASE        "${CMAKE_BINARY_DIR}/Release/lib"
-
-            ARCHIVE_OUTPUT_DIRECTORY_DEBUG          "${CMAKE_BINARY_DIR}/Debug/lib"
-            ARCHIVE_OUTPUT_DIRECTORY_RELEASE        "${CMAKE_BINARY_DIR}/Release/lib"
-    )
-
-    # Make the exe look in its own folder for shared libs
-    set_target_properties(${PROJECT_NAME} PROPERTIES
-            BUILD_WITH_INSTALL_RPATH TRUE
-            INSTALL_RPATH "$ORIGIN/../lib"
-            INSTALL_RPATH_USE_LINK_PATH FALSE
-    )
-
-    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            # Set up the plugin directories
-            COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>/imageformats"
-            COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>/platforms"
-            COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>/platformthemes"
-            # Copy the imageformats plugin
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_qt_plugins_dir}/imageformats/libqico.so" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/imageformats/"
-            # Copy the platform plugin
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_qt_plugins_dir}/platforms/libqxcb.so" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/platforms/"
-            # Copy the platformthemes plugin
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_qt_plugins_dir}/platformthemes/libqgtk3.so" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/platformthemes/"
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_qt_plugins_dir}/platformthemes/libqxdgdesktopportal.so" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/platformthemes/"
-    )
-
-    # Helper: copy the REAL file a SONAME symlink points to, saving it under the SONAME
-    function(copy_soname_into_bindir SONAME)
-        get_filename_component(_real "${_qt_lib_dir}/${SONAME}" REALPATH)
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_real}"
-                "$<TARGET_FILE_DIR:${PROJECT_NAME}>/../lib/${SONAME}"
-        )
-    endfunction()
-    # Copy Qt libs by SONAME (these names are what the loader looks for) because the are sym-links
-    copy_soname_into_bindir("libQt6Core.so.6")
-    copy_soname_into_bindir("libQt6Gui.so.6")
-    copy_soname_into_bindir("libQt6Widgets.so.6")
-    copy_soname_into_bindir("libQt6DBus.so.6")
-    copy_soname_into_bindir("libQt6OpenGL.so.6")
-    # If you keep X11 fallback:
-    copy_soname_into_bindir("libQt6XcbQpa.so.6")
-    # ICU (Qt is typically built against ICU on the official kits)
-    copy_soname_into_bindir("libicui18n.so.73")
-    copy_soname_into_bindir("libicuuc.so.73")
-    copy_soname_into_bindir("libicudata.so.73")
-
-    # Tell Qt where to find plugins, relative to the exe
-    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/qt.conf" "[Paths]\nPlugins=./platforms\n")
-    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${CMAKE_CURRENT_BINARY_DIR}/qt.conf"
-            "$<TARGET_FILE_DIR:${PROJECT_NAME}>/qt.conf"
     )
 endif()

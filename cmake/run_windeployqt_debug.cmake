@@ -8,7 +8,7 @@ if(NOT EXISTS "${WINDEPLOYQT}")
 endif()
 
 execute_process(
-        COMMAND "${WINDEPLOYQT}" --no-translations --no-compiler-runtime "${APP}"
+        COMMAND "${WINDEPLOYQT}" --debug --no-translations --no-compiler-runtime "${APP}"
         RESULT_VARIABLE rc
 )
 if(NOT rc EQUAL 0)
