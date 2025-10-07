@@ -26,7 +26,7 @@ Directory structure:
 * `.\Qt6Widgets.dll`
 
 ### On Linux:
-On Linux, I am using QT6 libs from the distribution to install Qt6:
+On Linux, I am using the distro's Qt6 libraries.  Here are the commands to install them:
 * Fedora / RHEL / Rocky / Alma (x86_64, aarch64):<br>
 `sudo dnf install -y qt6-qtbase-gui xorg-x11-server-Xwayland libxkbcommon-x11 libX11 libXext libXrender xcb-util-cursor`
 * Debian / LinuxMint / Ubuntu (amd64, arm64, etc.)<br>
