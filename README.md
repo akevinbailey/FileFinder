@@ -33,3 +33,8 @@ On Linux, I am using the distro's Qt6 libraries.  Here are the commands to insta
 `sudo apt-get install -y libqt6widgets6 xwayland libxcb1 libxcb-render0 libxcb-shape0 libxcb-xfixes0 libx11-6 libxext6 libxrender1 fontconfig libxkbcommon-x11-0 libxcb-cursor0`
 * openSUSE<br>
 `sudo zypper install -y libqt6-qtbase-platformtheme libqt6-qtbase-gui xwayland xcb-util-cursor`
+
+Directory structure:
+* `./icons/FileFinder.ico`
+* `./icons/FileFinder.png`
+* `./FileFinder`
