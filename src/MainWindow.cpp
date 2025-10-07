@@ -102,10 +102,10 @@ void MainWindow::connectSignals() {
 }
 
 void MainWindow::onBrowse() {
-    const QString dir = QFileDialog::getExistingDirectory(
+    const QString dir = QDir::toNativeSeparators(QFileDialog::getExistingDirectory(
         this, "Select Search Directory", QDir::homePath(),
         QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
-    );
+    ));
     if (!dir.isEmpty()) {
         leSearchDir_->setText(dir);
     }
@@ -124,13 +124,13 @@ void MainWindow::saveLastDir(const QString& dir) {
 }
 
 void MainWindow::onSearch() {
-    const QString headerName = leHeaderFile_->text().trimmed();
+    const QString fileName = leHeaderFile_->text().trimmed();
     const QString searchDir  = leSearchDir_->text().trimmed();
 
     statusLabel_->setText("Searching…");
     statusLabel_->repaint();
 
-    if (headerName.isEmpty()) {
+    if (fileName.isEmpty()) {
         QMessageBox::warning(this, "Missing Header File",
                              "Please enter a header file name (e.g., my-header.h).");
         return;
@@ -146,7 +146,7 @@ void MainWindow::onSearch() {
 
     teFound_->clear();
 
-    const auto matches = FileSearch::findFiles(searchDir, headerName);
+    const auto matches = FileSearch::findFiles(searchDir, fileName);
 
     if (matches.isEmpty()) {
         teFound_->setPlainText("No matches found.");
@@ -157,7 +157,7 @@ void MainWindow::onSearch() {
     QString out;
     out.reserve(matches.size() * 64);
     for (const auto& path : matches) {
-        out.append(path).append('\n');
+        out.append(QDir::toNativeSeparators(path)).append('\n');
     }
     teFound_->setPlainText(out);
     if (matches.size() > 1) {
