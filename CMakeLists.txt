@@ -1,5 +1,5 @@
 # Cross-platform CMake for FileFinder (x64 Windows + x64 Linux)
-cmake_minimum_required(VERSION 4.0)
+cmake_minimum_required(VERSION 3.25)
 project(FileFinder LANGUAGES CXX)
 
 # C++20 + Qt autogen
@@ -84,8 +84,10 @@ add_executable(${PROJECT_NAME} ${_WIN_GUI_FLAG}
 target_include_directories(${PROJECT_NAME} PRIVATE "${SRC_DIR}")
 target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Widgets)
 
-# Nice warnings on GCC/Clang
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+# Enable useful warnings
+if (MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE /W4 /permissive-)
+else()
     target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
@@ -110,6 +112,7 @@ set(_qt_plugins_dir "${_qt_arch_dir}/plugins")
 if (WIN32)
     # Windows needs Unicode
     target_compile_definitions(${PROJECT_NAME} PRIVATE UNICODE _UNICODE)
+    set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE TRUE)
 
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
             # Set up the plugin directories
