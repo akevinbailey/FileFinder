@@ -34,6 +34,7 @@
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent) {
+    setWindowTitle("File Finder");
     resize(1280, 600);
     buildUi();
     connectSignals();
