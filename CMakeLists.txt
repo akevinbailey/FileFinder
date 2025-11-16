@@ -22,18 +22,12 @@ if (WIN32)
     if (NOT DEFINED Qt6_DIR)
         set(Qt6_DIR "C:/Development/Qt/6.10.0/msvc2022_64")
     endif()
-    if (NOT DEFINED DEPLOY_QT)
-        set(DEPLOY_QT "C:/Development/Qt/6.10.0/msvc2022_64/bin/windeployqt6.exe")
-    endif()
 elseif (APPLE)
     if (NOT DEFINED CMAKE_PREFIX_PATH)
         set(CMAKE_PREFIX_PATH "/Library/Qt/6.10.0/macos/lib/cmake/Qt6")
     endif()
     if (NOT DEFINED Qt6_DIR)
         set(Qt6_DIR "/Library/Qt/6.10.0/macos")
-    endif()
-    if (NOT DEFINED DEPLOY_QT)
-        set(DEPLOY_QT "") # not used on Apple
     endif()
 else() # Linux
     # To build on Linux, use the Qt6 provided by the distro:
@@ -53,10 +47,6 @@ else() # Linux
     if (NOT DEFINED Qt6_DIR)
         set(Qt6_DIR "/usr/lib/x86_64-linux-gnu/qt6")
     endif()
-    if (NOT DEFINED DEPLOY_QT)
-        set(DEPLOY_QT "") # not used on Linux
-    endif()
-
     # Force the rpath you want, and don't append link directories
     set(CMAKE_INSTALL_RPATH "$ORIGIN")
 endif()
@@ -82,13 +72,28 @@ if (WIN32 AND EXISTS "${APP_RC}")
     list(APPEND APP_SOURCES "${APP_RC}")
 endif()
 
+# macOS: add .icns icon into the bundle if present
+set(APP_ICON_MAC "${CMAKE_CURRENT_SOURCE_DIR}/resources/${PROJECT_NAME}.icns")
+if (APPLE AND EXISTS "${APP_ICON_MAC}")
+    # Put icon into the bundle Resources
+    set_source_files_properties(${APP_ICON_MAC}
+            PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+    list(APPEND APP_SOURCES "${APP_ICON_MAC}")
+endif()
+
 # GUI subsystem on Windows (no console)
 set(_WIN_GUI_FLAG "")
 if (WIN32)
     set(_WIN_GUI_FLAG WIN32)
 endif()
 
-add_executable(${PROJECT_NAME} ${_WIN_GUI_FLAG}
+# GUI subsystem on Apple (no console)
+set(_MAC_BUNDLE_FLAG "")
+if (APPLE)
+    set(_MAC_BUNDLE_FLAG MACOSX_BUNDLE)
+endif()
+
+add_executable(${PROJECT_NAME} ${_WIN_GUI_FLAG} ${_MAC_BUNDLE_FLAG}
         ${APP_SOURCES}
         ${APP_HEADERS}
 )
@@ -105,6 +110,21 @@ endif()
 
 ############################# Copy libraries to their required directories #############################
 
+# macOS bundle properties (name, icon, id, etc.)
+if (APPLE)
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+            MACOSX_BUNDLE TRUE
+            MACOSX_BUNDLE_BUNDLE_NAME          "${PROJECT_NAME}"
+            MACOSX_BUNDLE_GUI_IDENTIFIER       "com.example.${PROJECT_NAME}"
+            MACOSX_BUNDLE_BUNDLE_VERSION       "1.0.0"
+            MACOSX_BUNDLE_SHORT_VERSION_STRING "1.0.0"
+    )
+    if (EXISTS "${APP_ICON_MAC}")
+        set_target_properties(${PROJECT_NAME} PROPERTIES
+                MACOSX_BUNDLE_ICON_FILE "${PROJECT_NAME}.icns")
+    endif()
+endif()
+
 # Add icons
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         # Set up the plugin directories
@@ -119,13 +139,17 @@ get_filename_component(_qt_lib_dir   "${_qt_cmake_dir}/.." ABSOLUTE) # .../lib
 get_filename_component(_qt_arch_dir  "${_qt_lib_dir}/.." ABSOLUTE)   # .../gcc_64 or .../msvc2022_64
 set(_qt_plugins_dir "${_qt_arch_dir}/plugins")
 
-# For the Windows application to work, the files must be in certain locations.  The .\Release directory has all the
+# For the Windows and MacOS applications to work, the files must be in certain locations.  The .\Release directory has all the
 # files needed to execute the application
 if (WIN32)
-    # Windows needs Unicode
+    # Windows and MacOS needs Unicode
     target_compile_definitions(${PROJECT_NAME} PRIVATE UNICODE _UNICODE)
     set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE TRUE)
+    find_program(DEPLOYQT windeployqt.exe
+            HINTS "${Qt6_DIR}/bin" "C:/Development/Qt/6.10.0/msvc2022_64/bin"
+    )
 
+    # To reduce the file sizes on Window, we manually copy only the necessary libraries instead of using windeployqt.exe
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
             # Set up the plugin directories
             COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>/imageformats"
@@ -143,15 +167,34 @@ if (WIN32)
             COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:Qt6::Widgets>" "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
     )
 
-    # We must execute an external cmake script to get the extra debug files due to the way cmake handles multi-config generators
-    set(WINDEPLOYQT "C:/Development/Qt/6.10.0/msvc2022_64/bin/windeployqt.exe")
+    # We must execute an external cmake script to call windeployqt.exe and get the extra debug files due to the way cmake handles multi-config generators on Windows
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
             COMMAND ${CMAKE_COMMAND}
-            -DWINDEPLOYQT:FILEPATH=${WINDEPLOYQT}
+            -DDEPLOYQT:FILEPATH=${DEPLOYQT}
             -DAPP=$<TARGET_FILE:${PROJECT_NAME}>
             -DCONFIG=$<CONFIG>
-            -P "${CMAKE_CURRENT_LIST_DIR}/cmake/run_windeployqt_debug.cmake"
+            -P "${CMAKE_CURRENT_LIST_DIR}/cmake/run_deployqt_debug.cmake"
             VERBATIM
-            COMMENT "windeployqt (Debug only)"
+            COMMENT "deployqt (Debug only)"
     )
+elseif (APPLE)
+    # Windows and MacOS needs Unicode
+    target_compile_definitions(${PROJECT_NAME} PRIVATE UNICODE _UNICODE)
+
+    # Find macdeployqt in the Qt bin dir
+    find_program(DEPLOYQT macdeployqt
+            HINTS "${Qt6_DIR}/bin" "/Library/Qt/6.10.0/macos/bin"
+    )
+
+    if (NOT DEPLOYQT)
+        message(FATAL_ERROR "macdeployqt not found. Please check Qt6_DIR or install Qt tools.")
+    endif()
+
+    # Run macdeployqt on the .app bundle itself
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND "${DEPLOYQT}" "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>" -verbose=1
+            COMMENT "Running macdeployqt on ${PROJECT_NAME}.app"
+    )
+else()
+    # Linux: no special deployment, rely on system Qt
 endif()
