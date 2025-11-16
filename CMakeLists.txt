@@ -25,6 +25,16 @@ if (WIN32)
     if (NOT DEFINED DEPLOY_QT)
         set(DEPLOY_QT "C:/Development/Qt/6.10.0/msvc2022_64/bin/windeployqt6.exe")
     endif()
+elseif (APPLE)
+    if (NOT DEFINED CMAKE_PREFIX_PATH)
+        set(CMAKE_PREFIX_PATH "/Library/Qt/6.10.0/macos/lib/cmake/Qt6")
+    endif()
+    if (NOT DEFINED Qt6_DIR)
+        set(Qt6_DIR "/Library/Qt/6.10.0/macos")
+    endif()
+    if (NOT DEFINED DEPLOY_QT)
+        set(DEPLOY_QT "") # not used on Apple
+    endif()
 else() # Linux
     # To build on Linux, use the Qt6 provided by the distro:
     # Ubuntu / Debian (amd64, arm64, etc.):
