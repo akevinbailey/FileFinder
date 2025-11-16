@@ -38,3 +38,6 @@ Directory structure:
 * `./icons/FileFinder.ico`
 * `./icons/FileFinder.png`
 * `./FileFinder`
+
+### On MacOS:
+On MacOS all the files are in the app bundle and no extra steps are required.
