@@ -145,9 +145,14 @@ if (WIN32)
     # Windows and MacOS needs Unicode
     target_compile_definitions(${PROJECT_NAME} PRIVATE UNICODE _UNICODE)
     set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE TRUE)
+    # Find windeployqt.exe in the Qt bin dir
     find_program(DEPLOYQT windeployqt.exe
             HINTS "${Qt6_DIR}/bin" "C:/Development/Qt/6.10.0/msvc2022_64/bin"
     )
+
+    if (NOT DEPLOYQT)
+        message(FATAL_ERROR "windeployqt.exe not found. Please check Qt6_DIR or install Qt tools.")
+    endif()
 
     # To reduce the file sizes on Window, we manually copy only the necessary libraries instead of using windeployqt.exe
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
