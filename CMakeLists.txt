@@ -11,17 +11,16 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 
-
 # ------- Qt locations (override from CLI/GUI if desired) -------
 if (WIN32)
     # Vulkan is not needed on Windows
     set(CMAKE_DISABLE_FIND_PACKAGE_WrapVulkanHeaders ON)
     # Defaults for Windows (Visual Studio)
     if (NOT DEFINED CMAKE_PREFIX_PATH)
-        set(CMAKE_PREFIX_PATH "C:/Development/Qt/6.10.0/msvc2022_64")
+        set(CMAKE_PREFIX_PATH "C:/Development/Qt/6.10.0/msvc2022_64/lib/cmake/Qt6")
     endif()
     if (NOT DEFINED Qt6_DIR)
-        set(Qt6_DIR "C:/Development/Qt/6.10.0/msvc2022_64/lib/cmake/Qt6")
+        set(Qt6_DIR "C:/Development/Qt/6.10.0/msvc2022_64")
     endif()
     if (NOT DEFINED DEPLOY_QT)
         set(DEPLOY_QT "C:/Development/Qt/6.10.0/msvc2022_64/bin/windeployqt6.exe")
@@ -31,15 +30,18 @@ else() # Linux
     # Ubuntu / Debian (amd64, arm64, etc.):
     #   sudo apt-get install -y build-essential cmake ninja-build qt6-base-dev qt6-base-dev-tools
     #   sudo apt-get install -y libqt6widgets6
-    #   sudo apt-get install -y xwayland libxcb1 libxcb-render0 libxcb-shape0 libxcb-xfixes0 libx11-6 libxext6 libxrender1 fontconfig libxkbcommon-x11-0 libxcb-cursor0
+    #   sudo apt-get install -y xwayland libxcb1 libxcb-render0 libxcb-shape0 libxcb-xfixes0 libx11-6 libxext6 libxrender1 fontconfig libxkbcommon-x11-0 libxcb-cursor0 libxkbcommon-dev
     # Fedora / RHEL / Rocky / Alma (x86_64, aarch64):
     #   sudo dnf install -y cmake ninja-build @development-tools qt6-qtbase-devel
     #   sudo dnf install -y qt6-qtbase-gui xorg-x11-server-Xwayland libxkbcommon-x11 libX11 libXext libXrender xcb-util-cursor
     # openSUSE
     #   sudo zypper install -y cmake ninja gcc-c++ libqt6-qtbase-devel
     #   sudo zypper install -y libqt6-qtbase-platformtheme libqt6-qtbase-gui xwayland xcb-util-cursor
-    if (NOT DEFINED Qt6_DIR)
+    if (NOT DEFINED CMAKE_PREFIX_PATH)
         set(CMAKE_PREFIX_PATH "/usr/lib/x86_64-linux-gnu/cmake/Qt6")
+    endif()
+    if (NOT DEFINED Qt6_DIR)
+        set(Qt6_DIR "/usr/lib/x86_64-linux-gnu/qt6")
     endif()
     if (NOT DEFINED DEPLOY_QT)
         set(DEPLOY_QT "") # not used on Linux
