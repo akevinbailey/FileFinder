@@ -144,6 +144,7 @@ set(_qt_plugins_dir "${_qt_arch_dir}/plugins")
 if (WIN32)
     # Windows and MacOS needs Unicode
     target_compile_definitions(${PROJECT_NAME} PRIVATE UNICODE _UNICODE)
+    target_link_libraries(${PROJECT_NAME} PRIVATE Advapi32)
     set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE TRUE)
     # Find windeployqt.exe in the Qt bin dir
     find_program(DEPLOYQT windeployqt.exe
