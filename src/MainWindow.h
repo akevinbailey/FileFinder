@@ -35,8 +35,10 @@ public:
 private slots:
   void onBrowse();
   void onSearch();
+  void showAboutDialog();
 
 private:
+  void buildMenus();
   void buildUi();
   void connectSignals();
   void loadSettings() const;

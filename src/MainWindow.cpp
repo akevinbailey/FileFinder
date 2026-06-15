@@ -19,8 +19,11 @@
 
 // ReSharper disable CppDFAMemoryLeak
 #include "MainWindow.h"
+#include "AboutDialog.h"
 #include "FileSearch.h"
 
+#include <QAction>
+#include <QApplication>
 #include <QWidget>
 #include <QGridLayout>
 #include <QLineEdit>
@@ -29,17 +32,40 @@
 #include <QLabel>
 #include <QFileDialog>
 #include <QDir>
+#include <QKeySequence>
 #include <QMessageBox>
+#include <QMenuBar>
 #include <QStatusBar>
+
+namespace {
+constexpr int kMenuMinimumWidth = 180;
+}
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent) {
     setWindowTitle("File Finder");
     resize(1280, 600);
+    buildMenus();
     buildUi();
     connectSignals();
 
     loadSettings(); // prefill the last-used directory
+}
+
+void MainWindow::buildMenus() {
+    auto* fileMenu = menuBar()->addMenu("&File");
+    fileMenu->setMinimumWidth(kMenuMinimumWidth);
+
+    auto* exitAction = fileMenu->addAction("E&xit");
+    exitAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Q));
+    connect(exitAction, &QAction::triggered, this, [] {
+        QApplication::quit();
+    });
+
+    auto* helpMenu = menuBar()->addMenu("&Help");
+    helpMenu->setMinimumWidth(kMenuMinimumWidth);
+    auto* aboutAction = helpMenu->addAction("&About...");
+    connect(aboutAction, &QAction::triggered, this, &MainWindow::showAboutDialog);
 }
 
 void MainWindow::buildUi() {
@@ -100,6 +126,11 @@ void MainWindow::buildUi() {
 void MainWindow::connectSignals() {
     connect(btnBrowse_, &QPushButton::clicked, this, &MainWindow::onBrowse);
     connect(btnSearch_, &QPushButton::clicked, this, &MainWindow::onSearch);
+}
+
+void MainWindow::showAboutDialog() {
+    AboutDialog dialog(this);
+    dialog.exec();
 }
 
 void MainWindow::onBrowse() {

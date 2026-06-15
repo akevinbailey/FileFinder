@@ -17,17 +17,17 @@ if (WIN32)
     set(CMAKE_DISABLE_FIND_PACKAGE_WrapVulkanHeaders ON)
     # Defaults for Windows (Visual Studio)
     if (NOT DEFINED CMAKE_PREFIX_PATH)
-        set(CMAKE_PREFIX_PATH "C:/Development/Qt/6.10.0/msvc2022_64/lib/cmake/Qt6")
+        set(CMAKE_PREFIX_PATH "C:/Development/Qt/6.10.3/msvc2022_64/lib/cmake/Qt6")
     endif()
     if (NOT DEFINED Qt6_DIR)
-        set(Qt6_DIR "C:/Development/Qt/6.10.0/msvc2022_64")
+        set(Qt6_DIR "C:/Development/Qt/6.10.3/msvc2022_64")
     endif()
 elseif (APPLE)
     if (NOT DEFINED CMAKE_PREFIX_PATH)
-        set(CMAKE_PREFIX_PATH "/Library/Qt/6.10.0/macos/lib/cmake/Qt6")
+        set(CMAKE_PREFIX_PATH "/Library/Qt/6.10.3/macos/lib/cmake/Qt6")
     endif()
     if (NOT DEFINED Qt6_DIR)
-        set(Qt6_DIR "/Library/Qt/6.10.0/macos")
+        set(Qt6_DIR "/Library/Qt/6.10.3/macos")
     endif()
 else() # Linux
     # To build on Linux, use the Qt6 provided by the distro:
@@ -101,6 +101,23 @@ add_executable(${PROJECT_NAME} ${_WIN_GUI_FLAG} ${_MAC_BUNDLE_FLAG}
 target_include_directories(${PROJECT_NAME} PRIVATE "${SRC_DIR}")
 target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Widgets)
 
+set(FILEFINDER_TARGET_PROCESSOR "${CMAKE_SYSTEM_PROCESSOR}")
+if (CMAKE_VS_PLATFORM_NAME)
+    set(FILEFINDER_TARGET_PROCESSOR "${CMAKE_VS_PLATFORM_NAME}")
+endif()
+
+set(FILEFINDER_COMPILED_FOR "${CMAKE_SYSTEM_NAME} ${FILEFINDER_TARGET_PROCESSOR}")
+set(FILEFINDER_COMPILED_ON "${CMAKE_HOST_SYSTEM_NAME} ${CMAKE_HOST_SYSTEM_PROCESSOR}")
+set(FILEFINDER_COMPILED_WITH "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
+string(TIMESTAMP FILEFINDER_BUILD_DATE "%Y-%m-%d")
+
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+        "FILEFINDER_COMPILED_FOR=\"${FILEFINDER_COMPILED_FOR}\""
+        "FILEFINDER_COMPILED_ON=\"${FILEFINDER_COMPILED_ON}\""
+        "FILEFINDER_BUILD_DATE=\"${FILEFINDER_BUILD_DATE}\""
+        "FILEFINDER_COMPILED_WITH=\"${FILEFINDER_COMPILED_WITH}\""
+)
+
 # Enable useful warnings
 if (MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE /W4 /permissive-)
@@ -116,8 +133,8 @@ if (APPLE)
             MACOSX_BUNDLE TRUE
             MACOSX_BUNDLE_BUNDLE_NAME          "${PROJECT_NAME}"
             MACOSX_BUNDLE_GUI_IDENTIFIER       "com.example.${PROJECT_NAME}"
-            MACOSX_BUNDLE_BUNDLE_VERSION       "1.0.0"
-            MACOSX_BUNDLE_SHORT_VERSION_STRING "1.0.0"
+            MACOSX_BUNDLE_BUNDLE_VERSION       "1.5.0"
+            MACOSX_BUNDLE_SHORT_VERSION_STRING "1.5.0"
     )
     if (EXISTS "${APP_ICON_MAC}")
         set_target_properties(${PROJECT_NAME} PROPERTIES
@@ -138,6 +155,12 @@ get_filename_component(_qt_cmake_dir "${Qt6_DIR}" DIRECTORY)        # .../lib/cm
 get_filename_component(_qt_lib_dir   "${_qt_cmake_dir}/.." ABSOLUTE) # .../lib
 get_filename_component(_qt_arch_dir  "${_qt_lib_dir}/.." ABSOLUTE)   # .../gcc_64 or .../msvc2022_64
 set(_qt_plugins_dir "${_qt_arch_dir}/plugins")
+set(_qt_bin_dir "${_qt_arch_dir}/bin")
+
+# Compatibility with older CLion profiles that still pass -DDEPLOYQT.
+if (DEFINED DEPLOYQT)
+    set(_filefinder_legacy_deployqt "${DEPLOYQT}")
+endif()
 
 # For the Windows and MacOS applications to work, the files must be in certain locations.  The .\Release directory has all the
 # files needed to execute the application
@@ -146,12 +169,13 @@ if (WIN32)
     target_compile_definitions(${PROJECT_NAME} PRIVATE UNICODE _UNICODE)
     target_link_libraries(${PROJECT_NAME} PRIVATE Advapi32)
     set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE TRUE)
-    # Find windeployqt.exe in the Qt bin dir
-    find_program(DEPLOYQT windeployqt.exe
-            HINTS "${Qt6_DIR}/bin" "C:/Development/Qt/6.10.0/msvc2022_64/bin"
+    # Find windeployqt.exe in the Qt bin dir. Use a project-local variable so stale CMake cache entries do not pin an old Qt version.
+    find_program(_filefinder_windeployqt windeployqt.exe
+            HINTS "${_qt_bin_dir}" "C:/Development/Qt/6.10.3/msvc2022_64/bin"
+            NO_CACHE
     )
 
-    if (NOT DEPLOYQT)
+    if (NOT _filefinder_windeployqt)
         message(FATAL_ERROR "windeployqt.exe not found. Please check Qt6_DIR or install Qt tools.")
     endif()
 
@@ -176,7 +200,7 @@ if (WIN32)
     # We must execute an external cmake script to call windeployqt.exe and get the extra debug files due to the way cmake handles multi-config generators on Windows
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
             COMMAND ${CMAKE_COMMAND}
-            -DDEPLOYQT:FILEPATH=${DEPLOYQT}
+            -DDEPLOYQT:FILEPATH=${_filefinder_windeployqt}
             -DAPP=$<TARGET_FILE:${PROJECT_NAME}>
             -DCONFIG=$<CONFIG>
             -P "${CMAKE_CURRENT_LIST_DIR}/cmake/run_deployqt_debug.cmake"
@@ -187,18 +211,19 @@ elseif (APPLE)
     # Windows and MacOS needs Unicode
     target_compile_definitions(${PROJECT_NAME} PRIVATE UNICODE _UNICODE)
 
-    # Find macdeployqt in the Qt bin dir
-    find_program(DEPLOYQT macdeployqt
-            HINTS "${Qt6_DIR}/bin" "/Library/Qt/6.10.0/macos/bin"
+    # Find macdeployqt in the Qt bin dir. Use a project-local variable so stale CMake cache entries do not pin an old Qt version.
+    find_program(_filefinder_macdeployqt macdeployqt
+            HINTS "${_qt_bin_dir}" "/Library/Qt/6.10.3/macos/bin"
+            NO_CACHE
     )
 
-    if (NOT DEPLOYQT)
+    if (NOT _filefinder_macdeployqt)
         message(FATAL_ERROR "macdeployqt not found. Please check Qt6_DIR or install Qt tools.")
     endif()
 
     # Run macdeployqt on the .app bundle itself
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND "${DEPLOYQT}" "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>" -verbose=1
+            COMMAND "${_filefinder_macdeployqt}" "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>" -verbose=1
             COMMENT "Running macdeployqt on ${PROJECT_NAME}.app"
     )
 else()

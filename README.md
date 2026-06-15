@@ -12,7 +12,7 @@ Built with C++20 and Qt Widgets, the tool is lightweight and responsive. It pers
 Due to the way the Qt works, the files must be in a very specific directory structure.
 ### On Windows:
 Make sure you have the Visual C++ Redistributable installed.  You can download it from the Microsoft website:
-[Microsoft Visual C++ Redistributable packages for Visual Studio 2015-2022](https://aka.ms/vs/17/release/vc_redist.x64.exe)
+[Microsoft Visual C++ Redistributable packages for Visual Studio 2017-2026](https://aka.ms/vc14/vc_redist.x64.exe)
 
 Directory structure:
 * `.\icons\FileFinder.ico`

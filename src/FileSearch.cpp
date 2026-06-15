@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <cwctype>
 #include <filesystem>
+#include <ranges>
 #include <string>
 #include <system_error>
 #include <unordered_set>
@@ -108,9 +109,9 @@ bool shouldDeferDirectory(const fs::path &path) {
 
 fs::path toPath(const QString &path) {
 #ifdef _WIN32
-  return fs::path(path.toStdWString());
+  return {path.toStdWString()};
 #else
-  return fs::path(path.toStdString());
+  return {path.toStdString()};
 #endif
 }
 
@@ -139,7 +140,7 @@ QStringList FileSearch::findFiles(const QString& rootDir, const QString& headerF
     return results;
   }
 
-  const fs::directory_options opts = fs::directory_options::skip_permission_denied;
+  constexpr fs::directory_options opts = fs::directory_options::skip_permission_denied;
   std::unordered_set<std::u16string> visitedDirectories;
   visitedDirectories.insert(visitedKey(rootPath));
 
@@ -160,7 +161,7 @@ QStringList FileSearch::findFiles(const QString& rootDir, const QString& headerF
       if (entry.is_directory(ec)) {
         if (ec) { ec.clear(); continue; }
 
-        const fs::path childPath = entry.path();
+        const fs::path& childPath = entry.path();
         const auto [_, inserted] = visitedDirectories.insert(visitedKey(childPath));
         if (!inserted) {
           continue;
@@ -194,11 +195,11 @@ QStringList FileSearch::findFiles(const QString& rootDir, const QString& headerF
     std::ranges::sort(childDirectories, comparePaths);
     std::ranges::sort(deferredChildDirectories, comparePaths);
 
-    for (auto it = deferredChildDirectories.rbegin(); it != deferredChildDirectories.rend(); ++it) {
-      pendingDirectories.push_back(*it);
+    for (auto & deferredChildDirectory : std::views::reverse(deferredChildDirectories)) {
+      pendingDirectories.push_back(deferredChildDirectory);
     }
-    for (auto it = childDirectories.rbegin(); it != childDirectories.rend(); ++it) {
-      pendingDirectories.push_back(*it);
+    for (auto & childDirectory : std::views::reverse(childDirectories)) {
+      pendingDirectories.push_back(childDirectory);
     }
   }
 
