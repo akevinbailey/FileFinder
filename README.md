@@ -31,7 +31,7 @@ On Linux, I am using the AppImage to package the application.  This allows the a
 Directory structure:
 * `./icons/FileFinder.ico`
 * `./icons/FileFinder.png`
-* `./FileFinder`
+* `./FileFinder.AppImage`
 
 ### On MacOS:
 On macOS all the files are in the app bundle and no extra steps are required.
