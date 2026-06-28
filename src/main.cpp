@@ -18,18 +18,29 @@
 // SOFTWARE.
 
 #include <QApplication>
+#include <QGuiApplication>
 #include <QString>
 
 #include "MainWindow.h"
+
+namespace {
+constexpr auto kApplicationName = "FileFinder";
+constexpr auto kApplicationDisplayName = "File Finder";
+#ifndef FILEFINDER_DESKTOP_FILE_NAME
+#define FILEFINDER_DESKTOP_FILE_NAME "io.github.akevinbailey.filefinder"
+#endif
+constexpr auto kDesktopFileName = FILEFINDER_DESKTOP_FILE_NAME;
+}
 
 int main(int argc, char *argv[]) {
   QApplication app(argc, argv);
 
   QCoreApplication::setOrganizationName("Andrew Kevin Bailey");
   app.setProperty("copyright_date", QStringLiteral("2026"));
-  QCoreApplication::setApplicationName("FileFinder");
+  QCoreApplication::setApplicationName(kApplicationName);
   QCoreApplication::setApplicationVersion("1.5.0");
-  QGuiApplication::setApplicationDisplayName("File Finder");
+  QGuiApplication::setApplicationDisplayName(kApplicationDisplayName);
+  QGuiApplication::setDesktopFileName(kDesktopFileName);
   app.setProperty("homepage", QStringLiteral("https://github.com/akevinbailey/FileFinder"));
 
   QIcon icon;
@@ -38,6 +49,7 @@ int main(int argc, char *argv[]) {
   QGuiApplication::setWindowIcon(icon);
 
   MainWindow w;
+  w.setWindowIcon(icon);
   w.show();
-  return QApplication::exec();
+  return app.exec();
 }

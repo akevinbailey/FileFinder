@@ -58,9 +58,9 @@ QString applicationProperty(const char* name, const QString& fallback) {
 }
 
 QString appNameAndVersion() {
-    const QString appName = QCoreApplication::applicationName().isEmpty()
-        ? QStringLiteral("FileFinder")
-        : QCoreApplication::applicationName();
+    const QString appName = QGuiApplication::applicationDisplayName().isEmpty()
+        ? QStringLiteral("File Finder")
+        : QGuiApplication::applicationDisplayName();
     const QString appVersion = QCoreApplication::applicationVersion().isEmpty()
         ? QStringLiteral("Unknown")
         : QCoreApplication::applicationVersion();
@@ -97,7 +97,10 @@ void addInfoRow(QGridLayout* layout, const int row, const QString& name, const Q
 
 AboutDialog::AboutDialog(QWidget* parent)
     : QDialog(parent) {
-    setWindowTitle(QStringLiteral("About %1").arg(QCoreApplication::applicationName()));
+    const QString appDisplayName = QGuiApplication::applicationDisplayName().isEmpty()
+        ? QStringLiteral("File Finder")
+        : QGuiApplication::applicationDisplayName();
+    setWindowTitle(QStringLiteral("About %1").arg(appDisplayName));
     setModal(true);
     resize(430, 280);
 

@@ -1,6 +1,12 @@
-# Cross-platform CMake for FileFinder (x64 Windows + x64 Linux)
+# Cross-platform CMake for FileFinder
 cmake_minimum_required(VERSION 3.25)
-project(FileFinder LANGUAGES CXX)
+project(FileFinder VERSION 1.5.0 LANGUAGES CXX)
+
+set(FILEFINDER_DISPLAY_NAME "File Finder")
+set(FILEFINDER_DEVELOPER_ID "io.github.akevinbailey")
+set(FILEFINDER_DEVELOPER_NAME "Andrew Kevin Bailey")
+set(FILEFINDER_APPSTREAM_ID "${FILEFINDER_DEVELOPER_ID}.filefinder")
+set(FILEFINDER_LINUX_ICON_NAME "${FILEFINDER_APPSTREAM_ID}")
 
 # C++20 + Qt autogen
 set(CMAKE_CXX_STANDARD 20)
@@ -29,26 +35,45 @@ elseif (APPLE)
     if (NOT DEFINED Qt6_DIR)
         set(Qt6_DIR "/Library/Qt/6.10.3/macos")
     endif()
-else() # Linux
-    # To build on Linux, use the Qt6 provided by the distro:
-    # Ubuntu / Debian (amd64, arm64, etc.):
-    #   sudo apt-get install -y build-essential cmake ninja-build qt6-base-dev qt6-base-dev-tools
-    #   sudo apt-get install -y libqt6widgets6
-    #   sudo apt-get install -y xwayland libxcb1 libxcb-render0 libxcb-shape0 libxcb-xfixes0 libx11-6 libxext6 libxrender1 fontconfig libxkbcommon-x11-0 libxcb-cursor0 libxkbcommon-dev
-    # Fedora / RHEL / Rocky / Alma (x86_64, aarch64):
-    #   sudo dnf install -y cmake ninja-build @development-tools qt6-qtbase-devel
-    #   sudo dnf install -y qt6-qtbase-gui xorg-x11-server-Xwayland libxkbcommon-x11 libX11 libXext libXrender xcb-util-cursor
-    # openSUSE
-    #   sudo zypper install -y cmake ninja gcc-c++ libqt6-qtbase-devel
-    #   sudo zypper install -y libqt6-qtbase-platformtheme libqt6-qtbase-gui xwayland xcb-util-cursor
-    if (NOT DEFINED CMAKE_PREFIX_PATH)
-        set(CMAKE_PREFIX_PATH "/usr/lib/x86_64-linux-gnu/cmake/Qt6")
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64)$")
+        message(STATUS "Configuring for Linux x86_64")
+        set(QT_PLATFORM_DIR "/home/akbailey/Qt/6.10.3/gcc_64")
+        set(FILEFINDER_LINUXDEPLOY_ARCH "x86_64")
+    elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)$")
+        message(STATUS "Configuring for Linux ARM64 / AArch64")
+        set(QT_PLATFORM_DIR "/home/akbailey/Qt/6.10.3/gcc_arm64")
+        set(FILEFINDER_LINUXDEPLOY_ARCH "aarch64")
+    else()
+        message(FATAL_ERROR "Unsupported Linux architecture: ${CMAKE_SYSTEM_PROCESSOR}")
     endif()
-    if (NOT DEFINED Qt6_DIR)
-        set(Qt6_DIR "/usr/lib/x86_64-linux-gnu/qt6")
-    endif()
+
+    set(FILEFINDER_QT_CMAKE_DIR "${QT_PLATFORM_DIR}/lib/cmake")
+    set(CMAKE_PREFIX_PATH "${QT_PLATFORM_DIR}" CACHE PATH "Qt installation prefix" FORCE)
+    set(Qt6_DIR "${FILEFINDER_QT_CMAKE_DIR}/Qt6" CACHE PATH "Qt6 package directory" FORCE)
+
+    foreach(FILEFINDER_QT_PACKAGE IN ITEMS
+            Qt6Core
+            Qt6CoreTools
+            Qt6DBus
+            Qt6DBusTools
+            Qt6Gui
+            Qt6GuiTools
+            Qt6Widgets
+            Qt6WidgetsTools
+    )
+        if (EXISTS "${FILEFINDER_QT_CMAKE_DIR}/${FILEFINDER_QT_PACKAGE}")
+            set(${FILEFINDER_QT_PACKAGE}_DIR "${FILEFINDER_QT_CMAKE_DIR}/${FILEFINDER_QT_PACKAGE}"
+                    CACHE PATH "${FILEFINDER_QT_PACKAGE} package directory" FORCE)
+        else()
+            unset(${FILEFINDER_QT_PACKAGE}_DIR CACHE)
+        endif()
+    endforeach()
+
     # Force the rpath you want, and don't append link directories
     set(CMAKE_INSTALL_RPATH "$ORIGIN")
+else()
+    message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
 endif()
 
 # Find Qt
@@ -112,6 +137,7 @@ set(FILEFINDER_COMPILED_WITH "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERS
 string(TIMESTAMP FILEFINDER_BUILD_DATE "%Y-%m-%d")
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
+        "FILEFINDER_DESKTOP_FILE_NAME=\"${FILEFINDER_APPSTREAM_ID}\""
         "FILEFINDER_COMPILED_FOR=\"${FILEFINDER_COMPILED_FOR}\""
         "FILEFINDER_COMPILED_ON=\"${FILEFINDER_COMPILED_ON}\""
         "FILEFINDER_BUILD_DATE=\"${FILEFINDER_BUILD_DATE}\""
@@ -133,8 +159,8 @@ if (APPLE)
             MACOSX_BUNDLE TRUE
             MACOSX_BUNDLE_BUNDLE_NAME          "${PROJECT_NAME}"
             MACOSX_BUNDLE_GUI_IDENTIFIER       "com.example.${PROJECT_NAME}"
-            MACOSX_BUNDLE_BUNDLE_VERSION       "1.5.0"
-            MACOSX_BUNDLE_SHORT_VERSION_STRING "1.5.0"
+            MACOSX_BUNDLE_BUNDLE_VERSION       "${PROJECT_VERSION}"
+            MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
     )
     if (EXISTS "${APP_ICON_MAC}")
         set_target_properties(${PROJECT_NAME} PROPERTIES
@@ -150,10 +176,14 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/resources/${PROJECT_NAME}.png" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/icons"
 )
 
-# Resolve Qt dirs from Qt6_DIR
-get_filename_component(_qt_cmake_dir "${Qt6_DIR}" DIRECTORY)        # .../lib/cmake
-get_filename_component(_qt_lib_dir   "${_qt_cmake_dir}/.." ABSOLUTE) # .../lib
-get_filename_component(_qt_arch_dir  "${_qt_lib_dir}/.." ABSOLUTE)   # .../gcc_64 or .../msvc2022_64
+# Resolve Qt dirs
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(_qt_arch_dir "${QT_PLATFORM_DIR}")
+else()
+    get_filename_component(_qt_cmake_dir "${Qt6_DIR}" DIRECTORY)        # .../lib/cmake
+    get_filename_component(_qt_lib_dir   "${_qt_cmake_dir}/.." ABSOLUTE) # .../lib
+    get_filename_component(_qt_arch_dir  "${_qt_lib_dir}/.." ABSOLUTE)   # .../gcc_64 or .../msvc2022_64
+endif()
 set(_qt_plugins_dir "${_qt_arch_dir}/plugins")
 set(_qt_bin_dir "${_qt_arch_dir}/bin")
 
@@ -226,6 +256,331 @@ elseif (APPLE)
             COMMAND "${_filefinder_macdeployqt}" "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>" -verbose=1
             COMMENT "Running macdeployqt on ${PROJECT_NAME}.app"
     )
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    find_program(LINUXDEPLOY_EXECUTABLE
+            NAMES linuxdeploy linuxdeploy-x86_64.AppImage linuxdeploy-aarch64.AppImage linuxdeploy-arm64.AppImage
+            HINTS "${QT_PLATFORM_DIR}/bin"
+            DOC "Path to linuxdeploy"
+    )
+
+    if (NOT LINUXDEPLOY_EXECUTABLE)
+        message(FATAL_ERROR "linuxdeploy not found. Expected it in ${QT_PLATFORM_DIR}/bin, or set LINUXDEPLOY_EXECUTABLE.")
+    endif()
+
+    find_program(LINUXDEPLOY_QT_PLUGIN
+            NAMES linuxdeploy-plugin-qt linuxdeploy-plugin-qt-x86_64.AppImage linuxdeploy-plugin-qt-aarch64.AppImage linuxdeploy-plugin-qt-arm64.AppImage
+            HINTS "${QT_PLATFORM_DIR}/bin"
+            DOC "Path to linuxdeploy-plugin-qt"
+    )
+
+    if (NOT LINUXDEPLOY_QT_PLUGIN)
+        message(FATAL_ERROR "linuxdeploy-plugin-qt not found. Expected it in ${QT_PLATFORM_DIR}/bin, or set LINUXDEPLOY_QT_PLUGIN.")
+    endif()
+
+    find_program(LINUXDEPLOY_QMAKE
+            NAMES qmake6 qmake
+            HINTS "${QT_PLATFORM_DIR}/bin"
+            DOC "Path to the Qt qmake executable used by linuxdeploy-plugin-qt"
+    )
+
+    if (NOT LINUXDEPLOY_QMAKE)
+        message(FATAL_ERROR "qmake not found. Expected qmake or qmake6 in ${QT_PLATFORM_DIR}/bin, or set LINUXDEPLOY_QMAKE.")
+    endif()
+
+    find_program(CHMOD_EXECUTABLE chmod
+            DOC "Path to chmod"
+    )
+
+    if (NOT CHMOD_EXECUTABLE)
+        message(FATAL_ERROR "chmod not found. It is required to make the AppImage AppRun launcher executable.")
+    endif()
+
+    find_program(APPSTREAMCLI_EXECUTABLE appstreamcli
+            DOC "Path to appstreamcli, used to validate AppImage AppStream metadata"
+    )
+
+    if (NOT APPSTREAMCLI_EXECUTABLE)
+        message(FATAL_ERROR "appstreamcli not found. It is required to validate AppImage AppStream metadata.")
+    endif()
+
+    set(FILEFINDER_LINUXDEPLOY_EXCLUDED_LIBRARIES
+            "libglib-2.0.so*"
+            "libgthread-2.0.so*"
+    )
+
+    set(FILEFINDER_LINUXDEPLOY_EXCLUDE_ARGS)
+    foreach(FILEFINDER_LINUXDEPLOY_EXCLUDED_LIBRARY IN LISTS FILEFINDER_LINUXDEPLOY_EXCLUDED_LIBRARIES)
+        list(APPEND FILEFINDER_LINUXDEPLOY_EXCLUDE_ARGS
+                --exclude-library "${FILEFINDER_LINUXDEPLOY_EXCLUDED_LIBRARY}"
+        )
+    endforeach()
+
+    set(FILEFINDER_LINUX_DESKTOP_ID "${FILEFINDER_APPSTREAM_ID}.desktop")
+    set(FILEFINDER_APPDIR "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.AppDir")
+    set(FILEFINDER_LINUX_SOURCE_DESKTOP_FILE "${CMAKE_CURRENT_BINARY_DIR}/${FILEFINDER_LINUX_DESKTOP_ID}")
+    set(FILEFINDER_LINUX_APPDIR_DESKTOP_FILE "${FILEFINDER_APPDIR}/usr/share/applications/${FILEFINDER_LINUX_DESKTOP_ID}")
+    set(FILEFINDER_LINUX_SOURCE_ICON_FILE "${CMAKE_CURRENT_BINARY_DIR}/${FILEFINDER_LINUX_ICON_NAME}.png")
+    set(FILEFINDER_LINUX_SOURCE_APPSTREAM_FILE "${CMAKE_CURRENT_BINARY_DIR}/${FILEFINDER_APPSTREAM_ID}.metainfo.xml")
+    set(FILEFINDER_LINUX_APPDIR_APPSTREAM_FILE "${FILEFINDER_APPDIR}/usr/share/metainfo/${FILEFINDER_APPSTREAM_ID}.metainfo.xml")
+    file(WRITE "${FILEFINDER_LINUX_SOURCE_DESKTOP_FILE}"
+            "[Desktop Entry]\n"
+            "Type=Application\n"
+            "Name=${FILEFINDER_DISPLAY_NAME}\n"
+            "Comment=Find files by name within a selected directory tree\n"
+            "Exec=${PROJECT_NAME}\n"
+            "Icon=${FILEFINDER_LINUX_ICON_NAME}\n"
+            "StartupWMClass=${PROJECT_NAME}\n"
+            "Categories=Utility;\n"
+    )
+
+    file(WRITE "${FILEFINDER_LINUX_SOURCE_APPSTREAM_FILE}"
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+            "<component type=\"desktop-application\">\n"
+            "  <id>${FILEFINDER_LINUX_DESKTOP_ID}</id>\n"
+            "  <metadata_license>CC0-1.0</metadata_license>\n"
+            "  <project_license>MIT</project_license>\n"
+            "  <developer id=\"${FILEFINDER_DEVELOPER_ID}\">\n"
+            "    <name>${FILEFINDER_DEVELOPER_NAME}</name>\n"
+            "  </developer>\n"
+            "  <name>${FILEFINDER_DISPLAY_NAME}</name>\n"
+            "  <summary>Find files by name within a selected directory tree</summary>\n"
+            "  <description>\n"
+            "    <p>${FILEFINDER_DISPLAY_NAME} searches a selected directory tree for a target filename and lists matching full paths.</p>\n"
+            "  </description>\n"
+            "  <launchable type=\"desktop-id\">${FILEFINDER_LINUX_DESKTOP_ID}</launchable>\n"
+            "  <url type=\"homepage\">https://github.com/akevinbailey/FileFinder</url>\n"
+            "  <provides>\n"
+            "    <binary>${PROJECT_NAME}</binary>\n"
+            "  </provides>\n"
+            "  <categories>\n"
+            "    <category>Utility</category>\n"
+            "  </categories>\n"
+            "  <releases>\n"
+            "    <release version=\"${PROJECT_VERSION}\" date=\"${FILEFINDER_BUILD_DATE}\" />\n"
+            "  </releases>\n"
+            "  <content_rating type=\"oars-1.1\" />\n"
+            "</component>\n"
+    )
+
+    set(FILEFINDER_APPIMAGE_NAME "${PROJECT_NAME}.AppImage")
+    set(FILEFINDER_APPIMAGE_FILE "${CMAKE_CURRENT_BINARY_DIR}/${FILEFINDER_APPIMAGE_NAME}")
+    set(FILEFINDER_LINUXDEPLOY_QT_PLUGIN_LINK "${CMAKE_CURRENT_BINARY_DIR}/linuxdeploy-plugin-qt")
+    set(FILEFINDER_QT_PLUGIN_FILTER_DIR "${CMAKE_CURRENT_BINARY_DIR}/qt-plugins-for-appimage")
+    set(FILEFINDER_QMAKE_WRAPPER "${CMAKE_CURRENT_BINARY_DIR}/qmake-for-linuxdeploy")
+    set(FILEFINDER_APPRUN "${CMAKE_CURRENT_BINARY_DIR}/AppRun")
+
+    # linuxdeploy-plugin-qt deploys every Qt imageformat plugin it sees. This Qt
+    # install has libqtiff.so linked to libtiff.so.5, which is not required by
+    # FileFinder and may not exist on the deploy host. Give linuxdeploy a
+    # filtered plugin tree instead of modifying the Qt installation.
+    set(FILEFINDER_QT_PLUGIN_FILTER_COMMANDS)
+    file(GLOB FILEFINDER_QT_PLUGIN_ENTRIES LIST_DIRECTORIES true "${_qt_plugins_dir}/*")
+    foreach(FILEFINDER_QT_PLUGIN_ENTRY IN LISTS FILEFINDER_QT_PLUGIN_ENTRIES)
+        get_filename_component(FILEFINDER_QT_PLUGIN_ENTRY_NAME "${FILEFINDER_QT_PLUGIN_ENTRY}" NAME)
+
+        if (FILEFINDER_QT_PLUGIN_ENTRY_NAME STREQUAL "imageformats")
+            list(APPEND FILEFINDER_QT_PLUGIN_FILTER_COMMANDS
+                    COMMAND ${CMAKE_COMMAND} -E make_directory "${FILEFINDER_QT_PLUGIN_FILTER_DIR}/imageformats"
+            )
+
+            file(GLOB FILEFINDER_QT_IMAGEFORMAT_PLUGIN_ENTRIES "${FILEFINDER_QT_PLUGIN_ENTRY}/*.so*")
+            foreach(FILEFINDER_QT_IMAGEFORMAT_PLUGIN_ENTRY IN LISTS FILEFINDER_QT_IMAGEFORMAT_PLUGIN_ENTRIES)
+                get_filename_component(FILEFINDER_QT_IMAGEFORMAT_PLUGIN_NAME "${FILEFINDER_QT_IMAGEFORMAT_PLUGIN_ENTRY}" NAME)
+                if (NOT FILEFINDER_QT_IMAGEFORMAT_PLUGIN_NAME MATCHES "^libqtiff\\.so")
+                    list(APPEND FILEFINDER_QT_PLUGIN_FILTER_COMMANDS
+                            COMMAND ${CMAKE_COMMAND} -E create_symlink
+                                    "${FILEFINDER_QT_IMAGEFORMAT_PLUGIN_ENTRY}"
+                                    "${FILEFINDER_QT_PLUGIN_FILTER_DIR}/imageformats/${FILEFINDER_QT_IMAGEFORMAT_PLUGIN_NAME}"
+                    )
+                endif()
+            endforeach()
+        else()
+            list(APPEND FILEFINDER_QT_PLUGIN_FILTER_COMMANDS
+                    COMMAND ${CMAKE_COMMAND} -E create_symlink
+                            "${FILEFINDER_QT_PLUGIN_ENTRY}"
+                            "${FILEFINDER_QT_PLUGIN_FILTER_DIR}/${FILEFINDER_QT_PLUGIN_ENTRY_NAME}"
+            )
+        endif()
+    endforeach()
+
+    file(WRITE "${FILEFINDER_QMAKE_WRAPPER}"
+            "#!/usr/bin/env sh\n"
+            "if [ \"$1\" = \"-query\" ] && [ \"$2\" = \"QT_INSTALL_PLUGINS\" ]; then\n"
+            "    printf '%s\\n' '${FILEFINDER_QT_PLUGIN_FILTER_DIR}'\n"
+            "    exit 0\n"
+            "fi\n"
+            "if [ \"$1\" = \"-query\" ] && [ \"$#\" -eq 1 ]; then\n"
+            "    '${LINUXDEPLOY_QMAKE}' \"$@\" | sed 's|^QT_INSTALL_PLUGINS:.*$|QT_INSTALL_PLUGINS:${FILEFINDER_QT_PLUGIN_FILTER_DIR}|'\n"
+            "    exit $?\n"
+            "fi\n"
+            "exec '${LINUXDEPLOY_QMAKE}' \"$@\"\n"
+    )
+    file(CHMOD "${FILEFINDER_QMAKE_WRAPPER}"
+            PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+    )
+
+    file(WRITE "${FILEFINDER_APPRUN}" [=[
+#!/usr/bin/env sh
+set -eu
+
+if [ -z "${APPDIR:-}" ]; then
+    this="$0"
+    case "${this}" in
+        /*) ;;
+        *) this="$(pwd)/${this}" ;;
+    esac
+    APPDIR="$(CDPATH= cd -- "$(dirname -- "${this}")" && pwd)"
+fi
+export APPDIR
+
+export PATH="${APPDIR}/usr/bin:${PATH:-}"
+export LD_LIBRARY_PATH="${APPDIR}/usr/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+export QT_PLUGIN_PATH="${APPDIR}/usr/plugins"
+export QML2_IMPORT_PATH="${APPDIR}/usr/qml"
+export XDG_DATA_DIRS="${APPDIR}/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+
+if [ -n "${WAYLAND_DISPLAY:-}" ] && [ -z "${QT_QPA_PLATFORM:-}" ]; then
+    export QT_QPA_PLATFORM='wayland;xcb'
+fi
+
+if [ -z "${QT_QPA_PLATFORMTHEME:-}" ]; then
+    case "${XDG_CURRENT_DESKTOP:-}" in
+        *GNOME*|*Unity*|*Cinnamon*|*MATE*)
+            export QT_QPA_PLATFORMTHEME=gtk3
+            ;;
+    esac
+fi
+
+]=])
+    file(APPEND "${FILEFINDER_APPRUN}" "exec \"\${APPDIR}/usr/bin/${PROJECT_NAME}\" \"\$@\"\n")
+    file(CHMOD "${FILEFINDER_APPRUN}"
+            PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+    )
+
+    set(FILEFINDER_EXTRA_QT_RUNTIME_COMMANDS)
+
+    set(FILEFINDER_REQUIRED_QT_PLUGIN_FILES
+            "${_qt_plugins_dir}/platforms/libqwayland.so"
+    )
+
+    set(FILEFINDER_OPTIONAL_QT_PLUGIN_FILES
+            "${_qt_plugins_dir}/platformthemes/libqgtk3.so"
+    )
+
+    foreach(FILEFINDER_REQUIRED_QT_PLUGIN_FILE IN LISTS FILEFINDER_REQUIRED_QT_PLUGIN_FILES)
+        if (NOT EXISTS "${FILEFINDER_REQUIRED_QT_PLUGIN_FILE}")
+            message(FATAL_ERROR "Required Qt plugin not found: ${FILEFINDER_REQUIRED_QT_PLUGIN_FILE}")
+        endif()
+    endforeach()
+
+    foreach(FILEFINDER_QT_PLUGIN_FILE IN LISTS FILEFINDER_REQUIRED_QT_PLUGIN_FILES FILEFINDER_OPTIONAL_QT_PLUGIN_FILES)
+        if (EXISTS "${FILEFINDER_QT_PLUGIN_FILE}")
+            get_filename_component(FILEFINDER_QT_PLUGIN_DIRECTORY "${FILEFINDER_QT_PLUGIN_FILE}" DIRECTORY)
+            get_filename_component(FILEFINDER_QT_PLUGIN_DIRECTORY_NAME "${FILEFINDER_QT_PLUGIN_DIRECTORY}" NAME)
+            get_filename_component(FILEFINDER_QT_PLUGIN_NAME "${FILEFINDER_QT_PLUGIN_FILE}" NAME)
+            list(APPEND FILEFINDER_EXTRA_QT_RUNTIME_COMMANDS
+                    COMMAND ${CMAKE_COMMAND} -E make_directory "${FILEFINDER_APPDIR}/usr/plugins/${FILEFINDER_QT_PLUGIN_DIRECTORY_NAME}"
+                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                            "${FILEFINDER_QT_PLUGIN_FILE}"
+                            "${FILEFINDER_APPDIR}/usr/plugins/${FILEFINDER_QT_PLUGIN_DIRECTORY_NAME}/${FILEFINDER_QT_PLUGIN_NAME}"
+            )
+        endif()
+    endforeach()
+
+    foreach(FILEFINDER_QT_WAYLAND_PLUGIN_DIRECTORY IN ITEMS
+            wayland-decoration-client
+            wayland-graphics-integration-client
+            wayland-shell-integration
+    )
+        file(GLOB FILEFINDER_QT_WAYLAND_PLUGIN_FILES
+                "${_qt_plugins_dir}/${FILEFINDER_QT_WAYLAND_PLUGIN_DIRECTORY}/*.so"
+        )
+
+        if (FILEFINDER_QT_WAYLAND_PLUGIN_FILES)
+            list(APPEND FILEFINDER_EXTRA_QT_RUNTIME_COMMANDS
+                    COMMAND ${CMAKE_COMMAND} -E make_directory "${FILEFINDER_APPDIR}/usr/plugins/${FILEFINDER_QT_WAYLAND_PLUGIN_DIRECTORY}"
+            )
+
+            foreach(FILEFINDER_QT_WAYLAND_PLUGIN_FILE IN LISTS FILEFINDER_QT_WAYLAND_PLUGIN_FILES)
+                get_filename_component(FILEFINDER_QT_WAYLAND_PLUGIN_NAME "${FILEFINDER_QT_WAYLAND_PLUGIN_FILE}" NAME)
+                list(APPEND FILEFINDER_EXTRA_QT_RUNTIME_COMMANDS
+                        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                                "${FILEFINDER_QT_WAYLAND_PLUGIN_FILE}"
+                                "${FILEFINDER_APPDIR}/usr/plugins/${FILEFINDER_QT_WAYLAND_PLUGIN_DIRECTORY}/${FILEFINDER_QT_WAYLAND_PLUGIN_NAME}"
+                )
+            endforeach()
+        endif()
+    endforeach()
+
+    foreach(FILEFINDER_QT_RUNTIME_LIBRARY IN ITEMS
+            libQt6WaylandClient.so.6
+            libQt6OpenGL.so.6
+    )
+        set(FILEFINDER_QT_RUNTIME_LIBRARY_PATH "${QT_PLATFORM_DIR}/lib/${FILEFINDER_QT_RUNTIME_LIBRARY}")
+        if (EXISTS "${FILEFINDER_QT_RUNTIME_LIBRARY_PATH}")
+            get_filename_component(FILEFINDER_QT_RUNTIME_LIBRARY_REALPATH "${FILEFINDER_QT_RUNTIME_LIBRARY_PATH}" REALPATH)
+            list(APPEND FILEFINDER_EXTRA_QT_RUNTIME_COMMANDS
+                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                            "${FILEFINDER_QT_RUNTIME_LIBRARY_REALPATH}"
+                            "${FILEFINDER_APPDIR}/usr/lib/${FILEFINDER_QT_RUNTIME_LIBRARY}"
+            )
+        endif()
+    endforeach()
+
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E rm -rf "${FILEFINDER_APPDIR}"
+            COMMAND ${CMAKE_COMMAND} -E rm -f "${FILEFINDER_APPIMAGE_FILE}"
+            COMMAND ${CMAKE_COMMAND} -E rm -f "${FILEFINDER_LINUXDEPLOY_QT_PLUGIN_LINK}"
+            COMMAND ${CMAKE_COMMAND} -E create_symlink "${LINUXDEPLOY_QT_PLUGIN}" "${FILEFINDER_LINUXDEPLOY_QT_PLUGIN_LINK}"
+            COMMAND ${CMAKE_COMMAND} -E rm -rf "${FILEFINDER_QT_PLUGIN_FILTER_DIR}"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${FILEFINDER_QT_PLUGIN_FILTER_DIR}"
+            ${FILEFINDER_QT_PLUGIN_FILTER_COMMANDS}
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${FILEFINDER_APPDIR}"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${CMAKE_SOURCE_DIR}/resources/${PROJECT_NAME}.png"
+                    "${FILEFINDER_LINUX_SOURCE_ICON_FILE}"
+            COMMAND ${CMAKE_COMMAND} -E env
+                    "PATH=${CMAKE_CURRENT_BINARY_DIR}:${QT_PLATFORM_DIR}/bin:$ENV{PATH}"
+                    "LD_LIBRARY_PATH=${QT_PLATFORM_DIR}/lib:$ENV{LD_LIBRARY_PATH}"
+                    "${LINUXDEPLOY_EXECUTABLE}"
+                    --appdir "${FILEFINDER_APPDIR}"
+                    --executable "$<TARGET_FILE:${PROJECT_NAME}>"
+                    --desktop-file "${FILEFINDER_LINUX_SOURCE_DESKTOP_FILE}"
+                    --icon-file "${FILEFINDER_LINUX_SOURCE_ICON_FILE}"
+                    ${FILEFINDER_LINUXDEPLOY_EXCLUDE_ARGS}
+            COMMAND ${CMAKE_COMMAND} -E env
+                    "QMAKE=${FILEFINDER_QMAKE_WRAPPER}"
+                    "PATH=${CMAKE_CURRENT_BINARY_DIR}:${QT_PLATFORM_DIR}/bin:$ENV{PATH}"
+                    "LD_LIBRARY_PATH=${QT_PLATFORM_DIR}/lib:$ENV{LD_LIBRARY_PATH}"
+                    "${FILEFINDER_LINUXDEPLOY_QT_PLUGIN_LINK}"
+                    --appdir "${FILEFINDER_APPDIR}"
+                    ${FILEFINDER_LINUXDEPLOY_EXCLUDE_ARGS}
+            ${FILEFINDER_EXTRA_QT_RUNTIME_COMMANDS}
+            COMMAND ${CMAKE_COMMAND} -E rm -f "${FILEFINDER_APPDIR}/usr/plugins/imageformats/libqtiff.so"
+            COMMAND ${CMAKE_COMMAND} -E rm -f "${FILEFINDER_APPDIR}/usr/lib/libglib-2.0.so.0"
+            COMMAND ${CMAKE_COMMAND} -E rm -f "${FILEFINDER_APPDIR}/usr/lib/libgthread-2.0.so.0"
+            COMMAND ${CMAKE_COMMAND} -E rm -f "${FILEFINDER_APPDIR}/AppRun"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${FILEFINDER_APPRUN}" "${FILEFINDER_APPDIR}/AppRun"
+            COMMAND "${CHMOD_EXECUTABLE}" 755 "${FILEFINDER_APPDIR}/AppRun"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${FILEFINDER_APPDIR}/usr/share/metainfo"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${FILEFINDER_LINUX_SOURCE_APPSTREAM_FILE}"
+                    "${FILEFINDER_LINUX_APPDIR_APPSTREAM_FILE}"
+            COMMAND ${CMAKE_COMMAND} -E env
+                    "ARCH=${FILEFINDER_LINUXDEPLOY_ARCH}"
+                    "LDAI_OUTPUT=${FILEFINDER_APPIMAGE_FILE}"
+                    "PATH=${CMAKE_CURRENT_BINARY_DIR}:${QT_PLATFORM_DIR}/bin:$ENV{PATH}"
+                    "LD_LIBRARY_PATH=${QT_PLATFORM_DIR}/lib:$ENV{LD_LIBRARY_PATH}"
+                    "${LINUXDEPLOY_EXECUTABLE}"
+                    --appdir "${FILEFINDER_APPDIR}"
+                    --desktop-file "${FILEFINDER_LINUX_APPDIR_DESKTOP_FILE}"
+                    ${FILEFINDER_LINUXDEPLOY_EXCLUDE_ARGS}
+                    --output appimage
+            BYPRODUCTS "${FILEFINDER_APPIMAGE_FILE}"
+            WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+            VERBATIM
+            COMMENT "Building ${FILEFINDER_APPIMAGE_NAME}"
+    )
 else()
-    # Linux: no special deployment, rely on system Qt
+    message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
 endif()

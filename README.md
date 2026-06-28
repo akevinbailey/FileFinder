@@ -1,7 +1,7 @@
 # File Finder
 
 ## PURPOSE
-"File Finder" is a Qt 6.4+ desktop utility that helps C++ and Arduino developers quickly locate files within a chosen directory tree. It provides a simple GUI to enter a filename, select a search root, and view all matching full paths.  This application is optimized for fast file searches and low memory usage.
+"File Finder" is a Qt 6.10 desktop utility that helps C++ and Arduino developers quickly locate files within a chosen directory tree. It provides a simple GUI to enter a filename, select a search root, and view all matching full paths.  This application is optimized for fast file searches and low memory usage.
 
 ## DESCRIPTION
 The application presents two inputs: **File Name** for the target filename (e.g., `my-header.h`) and **Search Directory** for the root folder to scan. You can type a directory path directly or click **Browse…** to open a native folder chooser. When you press **Search**, the app recursively scans the directory and all subdirectories, performing a case-insensitive match on the filename and listing each full path in the **Found** textbox.
@@ -26,13 +26,7 @@ Directory structure:
 * `.\Qt6Widgets.dll`
 
 ### On Linux:
-On Linux, I am using the distro's Qt6 libraries.  Here are the commands to install them:
-* Fedora / RHEL / Rocky / Alma (x86_64, aarch64):<br>
-`sudo dnf install -y qt6-qtbase-gui xorg-x11-server-Xwayland libxkbcommon-x11 libX11 libXext libXrender xcb-util-cursor`
-* Debian / LinuxMint / Ubuntu (amd64, arm64, etc.)<br>
-`sudo apt-get install -y libqt6widgets6 xwayland libxcb1 libxcb-render0 libxcb-shape0 libxcb-xfixes0 libx11-6 libxext6 libxrender1 fontconfig libxkbcommon-x11-0 libxcb-cursor0`
-* openSUSE<br>
-`sudo zypper install -y libqt6-qtbase-platformtheme libqt6-qtbase-gui xwayland xcb-util-cursor`
+On Linux, I am using the AppImage to package the application.  This allows the application to run on any Linux distribution without any additional dependencies.  I have included the icon so you can set up a .desktop file for your distribution.
 
 Directory structure:
 * `./icons/FileFinder.ico`
@@ -40,4 +34,4 @@ Directory structure:
 * `./FileFinder`
 
 ### On MacOS:
-On MacOS all the files are in the app bundle and no extra steps are required.
+On macOS all the files are in the app bundle and no extra steps are required.
